@@ -18,6 +18,9 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 CORS(app)
 
+# Flag para inicialización
+_app_initialized = False
+
 # --- Middleware for request logging ---
 @app.before_request
 def log_request():
@@ -92,12 +95,16 @@ def initialize_app():
         logger.error(f"❌ Error inicializando aplicación: {e}")
         raise
 
-# --- Startup and shutdown ---
-@app.before_first_request
-def before_first_request():
-    """Initialize app on first request"""
-    initialize_app()
+# --- Initialization on first request ---
+@app.before_request
+def initialize_on_first_request():
+    """Initialize app on first request (Flask 3.0 compatible)"""
+    global _app_initialized
+    if not _app_initialized:
+        initialize_app()
+        _app_initialized = True
 
+# --- Startup and shutdown ---
 @app.teardown_appcontext
 def teardown(error):
     """Cleanup on shutdown"""
