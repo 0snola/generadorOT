@@ -1,0 +1,291 @@
+{
+  "description": "Mapeo de ciudades de Chile a códigos de Chilexpress",
+  "version": "1.0",
+  "lastUpdated": "2024-10-23",
+  "totalCities": 150,
+  "regions": {
+    "RM": {
+      "name": "Región Metropolitana",
+      "cities": {
+        "santiago": "STGO",
+        "providencia": "PROV",
+        "ñuñoa": "NUNO",
+        "nunoa": "NUNO",
+        "las condes": "LCON",
+        "maipú": "MAIP",
+        "maipu": "MAIP",
+        "puente alto": "PALT",
+        "pirque": "PIRQ",
+        "san josé de maipo": "SJMA",
+        "renca": "RENC",
+        "quinta normal": "QNOR",
+        "pudahuel": "PUDA",
+        "curicó": "CURI",
+        "curico": "CURI",
+        "talagante": "TALA",
+        "melipilla": "MELI",
+        "paine": "PAIN",
+        "lampa": "LAMP",
+        "colina": "COLI",
+        "til til": "TILT",
+        "tiltil": "TILT",
+        "peñaflor": "PENA",
+        "penaflor": "PENA",
+        "buin": "BUIN",
+        "pizarro": "PIZA",
+        "san bernardo": "SBER",
+        "calera de tango": "CALT",
+        "isla de maipo": "ISMA",
+        "el monte": "ELMO",
+        "pedro aguirre cerda": "PACE",
+        "conchali": "CONC",
+        "conchalí": "CONC",
+        "cerro navia": "CENA",
+        "recoleta": "RECO",
+        "independencia": "INDE",
+        "huechuraba": "HUEC",
+        "vitacura": "VITA",
+        "la florida": "LFLO",
+        "la reina": "LREI",
+        "peñalolén": "PNAL",
+        "penaluolen": "PNAL",
+        "macul": "MACU",
+        "san miguel": "SMIG",
+        "la granja": "LGRA",
+        "estación central": "ESTE",
+        "estacion central": "ESTE",
+        "san ramón": "SRAM",
+        "san ramon": "SRAM",
+        "la pintana": "LPIN",
+        "lo prado": "LOPE",
+        "lo espejo": "LOEP",
+        "la cisterna": "LCIS",
+        "san joaquín": "SJOA",
+        "san joaquin": "SJOA",
+        "la legua": "LLEG",
+        "alhue": "ALHU",
+        "alhué": "ALHU",
+        "puchuncaví": "PUCH",
+        "puchuncavi": "PUCH",
+        "algarrobo": "ALGA"
+      }
+    },
+    "V": {
+      "name": "Región de Valparaíso",
+      "cities": {
+        "valparaíso": "VALP",
+        "valparaiso": "VALP",
+        "viña del mar": "VINA",
+        "vina del mar": "VINA",
+        "viña": "VINA",
+        "vina": "VINA",
+        "concon": "CONC",
+        "concón": "CONC",
+        "quillota": "QUIL",
+        "limache": "LIMA",
+        "limáche": "LIMA",
+        "nogales": "NOGA",
+        "villa alemana": "VILA",
+        "quilpué": "QUILP",
+        "quilpue": "QUILP",
+        "calle larga": "CALE",
+        "san antonio": "SANT",
+        "santo domingo": "SDOM",
+        "cartagena": "CART",
+        "el tabo": "ELTA",
+        "pichilemu": "PICH",
+        "santa cruz": "SCRU",
+        "la calera": "LCAL",
+        "zapallar": "ZAPA",
+        "papudo": "PAPU",
+        "petorca": "PETO"
+      }
+    },
+    "VI": {
+      "name": "Región del Libertador General Bernardo O'Higgins",
+      "cities": {
+        "rancagua": "RANCA",
+        "machalí": "MACH",
+        "machali": "MACH",
+        "graneros": "GRAN",
+        "san fernando": "SFDO",
+        "santa rosa": "SROSA",
+        "san vicente de tagua tagua": "SVTT",
+        "pichidegua": "PCHI",
+        "chimbarongo": "CHIM",
+        "nancagua": "NANC",
+        "palmilla": "PALM",
+        "doñihue": "DONI",
+        "donihue": "DONI",
+        "mostazal": "MOST",
+        "requínoa": "REQU",
+        "requinoa": "REQU",
+        "rengo": "RENG",
+        "olivar": "OLIV"
+      }
+    },
+    "VII": {
+      "name": "Región del Maule",
+      "cities": {
+        "talca": "TALC",
+        "curicó": "CURI",
+        "curico": "CURI",
+        "linares": "LINA",
+        "chillan": "CHIL",
+        "chillán": "CHIL",
+        "constitución": "CONS",
+        "constitucion": "CONS",
+        "cauquenes": "CAUC",
+        "parral": "PARR",
+        "molina": "MOLI",
+        "pencahue": "PENC",
+        "san clemente": "SCLE",
+        "rauco": "RAUC",
+        "longaví": "LONG",
+        "longavi": "LONG",
+        "pemuco": "PEMU",
+        "villa alegre": "VILA",
+        "retiro": "RETI"
+      }
+    },
+    "VIII": {
+      "name": "Región de La Araucanía",
+      "cities": {
+        "temuco": "TEMU",
+        "pucón": "PUCO",
+        "pucon": "PUCO",
+        "villarrica": "VILL",
+        "osorno": "OSOR",
+        "puerto varas": "PVAR",
+        "loncoche": "LONC",
+        "cholchol": "CHOL",
+        "freire": "FREI",
+        "gorbea": "GORB",
+        "vilcún": "VILC",
+        "vilcun": "VILC",
+        "angol": "ANGO",
+        "collipulli": "COLL",
+        "traiguén": "TRAI",
+        "traiguen": "TRAI"
+      }
+    },
+    "XIV": {
+      "name": "Región de Los Ríos",
+      "cities": {
+        "valdivia": "VALD",
+        "paillaco": "PAIL",
+        "la unión": "LUNI",
+        "la union": "LUNI",
+        "corral": "CORR",
+        "niebla": "NIEB"
+      }
+    },
+    "X": {
+      "name": "Región de Los Lagos",
+      "cities": {
+        "puerto montt": "PMON",
+        "ancud": "ANCU",
+        "castro": "CAST",
+        "coyhaique": "COYH",
+        "villa la angostura": "VLAN",
+        "bariloche": "BARI",
+        "puerto octay": "POCT",
+        "frutillar": "FRUT",
+        "llanquihue": "LLAN",
+        "los muermos": "LMUE"
+      }
+    },
+    "II": {
+      "name": "Región de Antofagasta",
+      "cities": {
+        "antofagasta": "ANTO",
+        "calama": "CALA",
+        "san pedro de atacama": "SPAT",
+        "mejillones": "MEJO",
+        "tocopilla": "TOCO",
+        "taltal": "TALT"
+      }
+    },
+    "I": {
+      "name": "Región de Tarapacá",
+      "cities": {
+        "iquique": "IQUI",
+        "arica": "ARIC",
+        "pica": "PICA",
+        "camiña": "CAMI",
+        "camina": "CAMI",
+        "pozo almonte": "POZA"
+      }
+    },
+    "III": {
+      "name": "Región de Atacama",
+      "cities": {
+        "copiapó": "COPI",
+        "copiapo": "COPI",
+        "la serena": "LASE",
+        "coquimbo": "COQU",
+        "ovalle": "OVAL",
+        "vallenar": "VALL",
+        "huasco": "HUAS"
+      }
+    },
+    "IV": {
+      "name": "Región de Coquimbo",
+      "cities": {
+        "la serena": "LASE",
+        "coquimbo": "COQU",
+        "ovalle": "OVAL",
+        "el teniente": "ELTE"
+      }
+    },
+    "XV": {
+      "name": "Región de Arica y Parinacota",
+      "cities": {
+        "arica": "ARIC",
+        "putre": "PUTR",
+        "camarones": "CAMA"
+      }
+    },
+    "XI_XII": {
+      "name": "Regiones Sur",
+      "cities": {
+        "punta arenas": "PUNT",
+        "puerto natales": "PNAT",
+        "coyhaique": "COYH",
+        "villa ohiggins": "VOHI",
+        "cochrane": "COCH"
+      }
+    }
+  },
+  "flatMapping": {
+    "santiago": "STGO",
+    "stgo": "STGO",
+    "providencia": "PROV",
+    "ñuñoa": "NUNO",
+    "nunoa": "NUNO",
+    "las condes": "LCON",
+    "maipú": "MAIP",
+    "maipu": "MAIP",
+    "temuco": "TEMU",
+    "valparaíso": "VALP",
+    "valparaiso": "VALP",
+    "viña": "VINA",
+    "vina": "VINA",
+    "puerto montt": "PMON",
+    "iquique": "IQUI",
+    "arica": "ARIC",
+    "la serena": "LASE",
+    "coquimbo": "COQU",
+    "antofagasta": "ANTO",
+    "calama": "CALA",
+    "punta arenas": "PUNT"
+  },
+  "notes": [
+    "Los códigos se extraen del archivo cities.json",
+    "Se incluyen variantes con acentos y sin acentos",
+    "Todos los nombres están en minúsculas (lowercase)",
+    "Los códigos están en mayúsculas (uppercase)",
+    "La búsqueda debe normalizar el input a lowercase para coincidir",
+    "Si se necesita más ciudades, agregar a la sección correspondiente"
+  ]
+}

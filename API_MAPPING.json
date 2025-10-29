@@ -1,0 +1,875 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "lastUpdated": "2024-10-23",
+    "system": "OT Generator - Chilexpress Order Management",
+    "description": "Complete mapping of all external and internal APIs used in the conversational flow"
+  },
+  "phases": {
+    "phase_1_quotation": {
+      "name": "FASE 1: COTIZACIÓN",
+      "description": "Usuario solicita cotización de envío entre dos ciudades",
+      "flow": [
+        "Usuario escribe: 'Cotiza de Santiago a Temuco, 2kg'",
+        "Agente extrae datos y llama a obtener_cotizacion",
+        "MCP Server llama a Chilexpress API"
+      ],
+      "apis": [
+        {
+          "id": "chilexpress_quotation",
+          "name": "Get Quotation",
+          "provider": "Chilexpress",
+          "method": "POST",
+          "url": "https://devservices.wschilexpress.com/agendadigital/api/v4/Cotizador/GetCotizadorNacional",
+          "description": "Obtiene opciones de servicios disponibles y sus precios para una ruta específica",
+          "consumption": {
+            "location": "src/tools/services/chilexpress.js",
+            "function": "getQuote()",
+            "calledBy": ["MCP Server /quote endpoint"],
+            "triggers": ["obtener_cotizacion tool call"]
+          },
+          "request": {
+            "headers": {
+              "Content-Type": "application/json",
+              "Ocp-Apim-Subscription-Key": "API_KEY from .env"
+            },
+            "body": {
+              "example": {
+                "ciudadOrigen": "STG",
+                "ciudadDestino": "MAIP",
+                "peso": 2,
+                "largo": 30,
+                "ancho": 20,
+                "alto": 10,
+                "valorDeclarado": 50000
+              },
+              "required_fields": [
+                "ciudadOrigen",
+                "ciudadDestino",
+                "peso",
+                "largo",
+                "ancho",
+                "alto",
+                "valorDeclarado"
+              ]
+            }
+          },
+          "response": {
+            "success_code": 200,
+            "example": {
+              "cotizacion": [
+                {
+                  "servicio": "EXPRESS",
+                  "serviceCode": 1,
+                  "valor": 15000,
+                  "diasEntrega": 1
+                },
+                {
+                  "servicio": "STANDARD",
+                  "serviceCode": 2,
+                  "valor": 10000,
+                  "diasEntrega": 3
+                }
+              ]
+            },
+            "error_handling": "Si falla, agente dice 'No pudimos cotizar, intenta más tarde'"
+          },
+          "data_mapping": {
+            "ciudadOrigen": "extrae del mensaje del usuario (ej: 'Santiago' -> 'STG')",
+            "ciudadDestino": "extrae del mensaje del usuario (ej: 'Temuco' -> 'ZCO')",
+            "peso": "extrae del mensaje (ej: '2kg' -> 2)",
+            "dimensiones": "solicita si no están, usa defaults (30x20x10)",
+            "valorDeclarado": "solicita al usuario"
+          }
+        }
+      ]
+    },
+    "phase_2_sender_data": {
+      "name": "FASE 2: DATOS DEL REMITENTE",
+      "description": "Obtiene datos del remitente desde MongoDB o API Chilexpress",
+      "flow": [
+        "Agente solicita email del usuario",
+        "Usuario proporciona email",
+        "Sistema busca en MongoDB primero",
+        "Si no encuentra, busca en Chilexpress API",
+        "Si encuentra, guarda en MongoDB y muestra opciones"
+      ],
+      "apis": [
+        {
+          "id": "chilexpress_get_user",
+          "name": "Get User by Email",
+          "provider": "Chilexpress",
+          "method": "GET",
+          "url": "https://devservices.wschilexpress.com/agendadigital/api/v4/user/{email}",
+          "description": "Obtiene datos del usuario registrado en Chilexpress por su email",
+          "consumption": {
+            "location": "src/tools/services/chilexpress.js",
+            "function": "getSenderByEmail(email)",
+            "calledBy": ["MCP Server /get-sender-by-email endpoint"],
+            "triggers": ["obtener_datos_remitente tool call"]
+          },
+          "request": {
+            "method": "GET",
+            "url_params": {
+              "email": "usuario@gmail.com (lowercase)"
+            },
+            "headers": {
+              "Ocp-Apim-Subscription-Key": "API_KEY from .env",
+              "Origin": "https://personas.chilexpress.cl"
+            }
+          },
+          "response": {
+            "success_code": 200,
+            "error_codes": {
+              "404": "Usuario no encontrado",
+              "400": "Email inválido"
+            },
+            "example": {
+              "User": {
+                "IDCliente": 3400,
+                "GlsCorreo": "USUARIO@GMAIL.COM",
+                "NomCliente": "Luis",
+                "PatCliente": "Duarte",
+                "MatCliente": "Cea",
+                "NumIdentificacion": "16786170",
+                "DvIdentificacion": "9",
+                "TelefonoCliente": "950395840",
+                "Categoria": {
+                  "NomCategoria": "Consolida"
+                }
+              },
+              "statusCode": 200
+            }
+          },
+          "data_mapping": {
+            "nombre": "NomCliente + PatCliente + MatCliente",
+            "rut": "NumIdentificacion",
+            "dv": "DvIdentificacion",
+            "email": "GlsCorreo (lowercase)",
+            "telefono": "TelefonoCliente",
+            "idCliente": "IDCliente"
+          },
+          "persistence": {
+            "location": "src/agent/history.js",
+            "function": "saveUserData(userData)",
+            "storage": "MongoDB Users collection",
+            "fields_saved": [
+              "email",
+              "GlsCorreo",
+              "nombre",
+              "rut",
+              "dv",
+              "telefono",
+              "idCliente",
+              "categoria"
+            ]
+          }
+        },
+        {
+          "id": "mongodb_get_user",
+          "name": "Get User from MongoDB",
+          "provider": "MongoDB",
+          "method": "GET",
+          "url": "mongodb+srv://...",
+          "description": "Búsqueda local de usuario en MongoDB antes de consultar Chilexpress",
+          "consumption": {
+            "location": "src/agent/history.js",
+            "function": "getUserByEmail(email)",
+            "calledBy": ["openai.js obtener_datos_remitente handler"]
+          },
+          "request": {
+            "query": {
+              "description": "Case-insensitive search",
+              "example": {
+                "$or": [
+                  { "email": { "$regex": "usuario@gmail.com", "$options": "i" } },
+                  { "GlsCorreo": { "$regex": "USUARIO@GMAIL.COM", "$options": "i" } }
+                ]
+              }
+            }
+          },
+          "response": {
+            "found": {
+              "example": {
+                "_id": "ObjectId",
+                "email": "usuario@gmail.com",
+                "GlsCorreo": "USUARIO@GMAIL.COM",
+                "nombre": "Luis Duarte",
+                "rut": "16786170",
+                "dv": "9",
+                "telefono": "950395840"
+              }
+            },
+            "not_found": null
+          },
+          "fallback": "Si no encuentra en MongoDB, busca en Chilexpress"
+        }
+      ]
+    },
+    "phase_3_previous_recipients": {
+      "name": "FASE 2B: DESTINATARIOS PREVIOS (PROACTIVO)",
+      "description": "Muestra destinatarios previamente usados del mismo remitente",
+      "flow": [
+        "Después de obtener datos del remitente",
+        "Sistema busca destinatarios previos",
+        "Si hay, los muestra con botones",
+        "Usuario puede reutilizar o ingresar nuevo"
+      ],
+      "apis": [
+        {
+          "id": "chilexpress_get_recipients",
+          "name": "Get Previous Recipients",
+          "provider": "Chilexpress",
+          "method": "GET",
+          "url": "https://devservices.wschilexpress.com/agendadigital/api/v4/destinatario/{email}/cobertura/TODOS/tipoentrega/0",
+          "description": "Obtiene lista de destinatarios previamente usados por el remitente",
+          "consumption": {
+            "location": "src/tools/services/chilexpress.js",
+            "function": "getPreviousRecipients(email)",
+            "calledBy": ["MCP Server /get-sender-by-email endpoint (also returns recipients)"]
+          },
+          "request": {
+            "url_params": {
+              "email": "usuario@gmail.com",
+              "cobertura": "TODOS",
+              "tipoentrega": "0"
+            },
+            "headers": {
+              "Ocp-Apim-Subscription-Key": "API_KEY from .env"
+            }
+          },
+          "response": {
+            "success_code": 200,
+            "example": {
+              "destinatarios": [
+                {
+                  "nombre": "Constanza Gomez",
+                  "telefono": "12345678",
+                  "email": "constanza@gmail.com",
+                  "direccion": "Avenida Brasil",
+                  "numero": "7882",
+                  "ciudad": "Maipú"
+                },
+                {
+                  "nombre": "Juan Perez",
+                  "telefono": "98765432",
+                  "email": "juan@gmail.com",
+                  "direccion": "Pasaje España",
+                  "numero": "123",
+                  "ciudad": "Santiago"
+                }
+              ]
+            }
+          },
+          "data_mapping": {
+            "recipient_id": "índice en lista (1, 2, 3...)",
+            "nombre": "nombre",
+            "rut": "rut (si disponible)",
+            "telefono": "telefono",
+            "email": "email",
+            "direccion": "direccion",
+            "numero": "numero"
+          },
+          "persistence": {
+            "location": "src/agent/history.js",
+            "function": "saveRecipient(email, recipientData)",
+            "storage": "MongoDB Recipients collection",
+            "indexed_by": "userEmail"
+          }
+        }
+      ]
+    },
+    "phase_4_delivery_type": {
+      "name": "FASE 3: SELECCIONAR TIPO DE ENTREGA",
+      "description": "Usuario elige entre domicilio o sucursal",
+      "flow": [
+        "Agente muestra botones: Domicilio | Sucursal",
+        "Usuario selecciona una opción",
+        "Flujo continúa según selección"
+      ],
+      "apis": [],
+      "notes": "Esta fase es interna, sin llamadas a APIs externas"
+    },
+    "phase_5_recipient_data_domicilio": {
+      "name": "FASE 4A: DATOS DESTINATARIO - DOMICILIO",
+      "description": "Si usuario selecciona domicilio, valida y obtiene coordenadas",
+      "flow": [
+        "Usuario proporciona: ciudad, calle, número",
+        "Sistema valida dirección",
+        "Sistema obtiene coordenadas (latitud, longitud)",
+        "Se guardan para OT"
+      ],
+      "apis": [
+        {
+          "id": "chilexpress_search_street",
+          "name": "Search Street",
+          "provider": "Chilexpress",
+          "method": "POST",
+          "url": "https://devservices.wschilexpress.com/georeference/v2.1/api/v2.0/streets/search",
+          "description": "Busca información de calles para validación de dirección",
+          "consumption": {
+            "location": "src/tools/services/chilexpress.js",
+            "function": "searchStreet(comuna, calle, numero)",
+            "calledBy": ["MCP Server /search-street endpoint"]
+          },
+          "request": {
+            "body": {
+              "example": {
+                "comuna": "Maipú",
+                "street": "Avenida Brasil",
+                "number": "7882"
+              }
+            },
+            "headers": {
+              "Content-Type": "application/json",
+              "Ocp-Apim-Subscription-Key": "API_KEY from .env"
+            }
+          },
+          "response": {
+            "success_code": 200,
+            "example": {
+              "streets": [
+                {
+                  "streetId": "12345",
+                  "nombre": "Avenida Brasil",
+                  "numero": "7882",
+                  "comuna": "Maipú"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "chilexpress_validate_address",
+          "name": "Validate Address",
+          "provider": "Chilexpress",
+          "method": "POST",
+          "url": "https://devservices.wschilexpress.com/georeference/api/v1.0/address/validate",
+          "description": "Valida que una dirección sea válida y accesible",
+          "consumption": {
+            "location": "src/tools/services/chilexpress.js",
+            "function": "validateAddress(comuna, calle, numero)",
+            "calledBy": ["MCP Server /validate-address endpoint"],
+            "triggers": ["validar_direccion tool call before OT generation"]
+          },
+          "request": {
+            "body": {
+              "example": {
+                "comuna": "Maipú",
+                "calle": "Avenida Brasil",
+                "numero": "7882"
+              }
+            }
+          },
+          "response": {
+            "success_code": 200,
+            "example": {
+              "isValid": true,
+              "direccion": "Avenida Brasil 7882, Maipú",
+              "latitud": "-33.40118",
+              "longitud": "-70.51442"
+            },
+            "error_codes": {
+              "400": "Dirección no válida",
+              "404": "Dirección no encontrada"
+            }
+          },
+          "data_mapping": {
+            "latitud": "stored for OT generation",
+            "longitud": "stored for OT generation"
+          }
+        },
+        {
+          "id": "chilexpress_georeference",
+          "name": "Georeference Address",
+          "provider": "Chilexpress",
+          "method": "POST",
+          "url": "https://devservices.wschilexpress.com/georeference/v2.1/api/v2.0/addresses/georeference",
+          "description": "Obtiene las coordenadas exactas (latitud, longitud) de una dirección",
+          "consumption": {
+            "location": "src/tools/services/chilexpress.js",
+            "function": "georeferenceAddress(comuna, calle, numero)",
+            "calledBy": ["MCP Server /georeference endpoint"],
+            "triggers": ["obtener_coordenadas_direccion tool call"]
+          },
+          "request": {
+            "body": {
+              "example": {
+                "comuna": "Maipú",
+                "calle": "Avenida Brasil",
+                "numero": "7882"
+              }
+            }
+          },
+          "response": {
+            "success_code": 200,
+            "example": {
+              "latitud": "-33.40118000",
+              "longitud": "-70.51442000",
+              "precision": "high",
+              "direccion_geocodificada": "Avenida Brasil 7882, Maipú"
+            }
+          }
+        }
+      ]
+    },
+    "phase_5_recipient_data_sucursal": {
+      "name": "FASE 4B: DATOS DESTINATARIO - SUCURSAL",
+      "description": "Si usuario selecciona sucursal, busca y lista oficinas",
+      "flow": [
+        "Usuario proporciona ciudad de destino",
+        "Sistema busca oficinas disponibles",
+        "Muestra lista con botones",
+        "Usuario selecciona una"
+      ],
+      "apis": [
+        {
+          "id": "chilexpress_find_offices",
+          "name": "Find Offices",
+          "provider": "Chilexpress",
+          "method": "GET",
+          "url": "https://devservices.wschilexpress.com/georeference/v2.1/api/v2.0/offices/Internal",
+          "description": "Obtiene lista de sucursales Chilexpress en una ciudad",
+          "consumption": {
+            "location": "src/tools/services/chilexpress.js",
+            "function": "findOffices(comuna)",
+            "calledBy": ["MCP Server /find-offices endpoint"],
+            "triggers": ["buscar_oficinas_chilexpress tool call"]
+          },
+          "request": {
+            "url_params": {
+              "comuna": "Maipú"
+            },
+            "headers": {
+              "Ocp-Apim-Subscription-Key": "API_KEY from .env"
+            }
+          },
+          "response": {
+            "success_code": 200,
+            "example": {
+              "offices": [
+                {
+                  "id": "742",
+                  "nombre": "PICK UP MULTISERVICIOS RENCA",
+                  "direccion": "Pasaje Maule 1471, Renca",
+                  "telefono": "2 22834242",
+                  "horarios": "Lunes-Viernes 9:00-18:00",
+                  "latitud": "-33.40118",
+                  "longitud": "-70.51442"
+                },
+                {
+                  "id": "500",
+                  "nombre": "ORVIETTO EXPRESS",
+                  "direccion": "Avenida Libertador O'Higgins 1230, Santiago",
+                  "telefono": "2 25551234",
+                  "latitud": "-33.43728",
+                  "longitud": "-70.66560"
+                }
+              ]
+            }
+          },
+          "presentation": {
+            "format": "Botones numerados en WhatsApp/Telegram",
+            "example": "1️⃣ RENCA - Pasaje Maule 1471\n2️⃣ SANTIAGO - Avenida O'Higgins 1230"
+          }
+        }
+      ]
+    },
+    "phase_6_confirmation": {
+      "name": "FASE 5: CONFIRMACIÓN Y FORMA DE PAGO",
+      "description": "Resumen de datos y selección de forma de pago",
+      "flow": [
+        "Agente muestra resumen de la OT",
+        "Pide confirmación de forma de pago",
+        "Usuario selecciona: Contrapago o Pago Online"
+      ],
+      "apis": [],
+      "notes": "Fase interna sin llamadas externas. Pago Online es futuro."
+    },
+    "phase_7_generate_ot": {
+      "name": "FASE 6: GENERACIÓN DE OT Y QR",
+      "description": "Genera la Orden de Transporte y obtiene código QR",
+      "flow": [
+        "Agente recolecta todos los datos",
+        "Prepara estructura para Chilexpress",
+        "Envía POST para generar OT",
+        "Obtiene número de OT",
+        "Descarga código QR",
+        "Envía QR al usuario"
+      ],
+      "apis": [
+        {
+          "id": "chilexpress_generate_ot",
+          "name": "Generate Order of Transport",
+          "provider": "Chilexpress",
+          "method": "POST",
+          "url": "https://devservices.wschilexpress.com/agendadigital/api/v4/prechequeo/PostGenerarOT",
+          "description": "Genera la Orden de Transporte (OT) con todos los datos del envío",
+          "consumption": {
+            "location": "src/tools/services/chilexpress.js",
+            "function": "generateOT(otData)",
+            "calledBy": ["MCP Server /generate-ot endpoint"],
+            "triggers": ["generar_orden_transporte tool call after all data collected"]
+          },
+          "request": {
+            "headers": {
+              "Content-Type": "application/json",
+              "Ocp-Apim-Subscription-Key": "API_KEY from .env"
+            },
+            "body": {
+              "description": "Estructura compleja con datos del remitente, destinatario y servicios",
+              "required_fields": [
+                "NUM_TCC",
+                "NRO_GUIA",
+                "COD_ORIGEN_OT",
+                "COD_COBERTURA_ORIGEN",
+                "COD_COBERTURA",
+                "COD_CONTENIDO",
+                "SERVICIO_CODE",
+                "TIPO_ENTREGA",
+                "NOMBRE_REMITENTE",
+                "RUT_REMITENTE",
+                "EMAIL_REMITENTE",
+                "TELEFONO_REMITENTE",
+                "NOMBRE_DESTINATARIO",
+                "RUT_DESTINATARIO",
+                "EMAIL_DESTINATARIO",
+                "TELEFONO_DESTINATARIO",
+                "CALLE_DESTINATARIO",
+                "NUMERO_DESTINATARIO",
+                "COMUNA_DESTINATARIO",
+                "LAT_DIR",
+                "LON_DIR",
+                "PESO",
+                "LARGO",
+                "ANCHO",
+                "ALTO",
+                "VALOR_DECLARADO",
+                "VALOR_COBERTURA_EXTENDIDA"
+              ],
+              "example": {
+                "NUM_TCC": "123456",
+                "NRO_GUIA": "0",
+                "COD_ORIGEN_OT": "CL",
+                "COD_COBERTURA_ORIGEN": "STG",
+                "COD_COBERTURA": "MAIP",
+                "COD_CONTENIDO": "02",
+                "SERVICIO_CODE": 1,
+                "TIPO_ENTREGA": 2,
+                "NOMBRE_REMITENTE": "Luis Duarte",
+                "RUT_REMITENTE": "167861709",
+                "EMAIL_REMITENTE": "s.duarte@hotmail.es",
+                "TELEFONO_REMITENTE": "950395840",
+                "NOMBRE_DESTINATARIO": "Constanza Gomez",
+                "RUT_DESTINATARIO": "169874569",
+                "EMAIL_DESTINATARIO": "constanza@gmail.com",
+                "TELEFONO_DESTINATARIO": "12345678",
+                "CALLE_DESTINATARIO": "Avenida Brasil",
+                "NUMERO_DESTINATARIO": "7882",
+                "COMUNA_DESTINATARIO": "Maipú",
+                "LAT_DIR": "-33.40118",
+                "LON_DIR": "-70.51442",
+                "PESO": 2,
+                "LARGO": 30,
+                "ANCHO": 20,
+                "ALTO": 10,
+                "VALOR_DECLARADO": 50000,
+                "VALOR_COBERTURA_EXTENDIDA": 0
+              }
+            }
+          },
+          "response": {
+            "success_code": 200,
+            "example": {
+              "GeneraOT": {
+                "numero_ot": "OT12345678",
+                "fecha_creacion": "2024-10-23",
+                "estado": "ACEPTADA"
+              },
+              "Respuesta": {
+                "resultado": true,
+                "respuesta": "OT generada exitosamente"
+              }
+            },
+            "error_codes": {
+              "400": {
+                "respuesta": "SIN SERVICIO",
+                "cause": "Códigos de ciudad incorrectos o datos inválidos"
+              },
+              "400": {
+                "respuesta": "Faltan datos obligatorios",
+                "cause": "No están remitente o destinatario"
+              }
+            }
+          },
+          "critical_data_mapping": {
+            "COD_COBERTURA_ORIGEN": "Origen (STG=Santiago, MAIP=Maipú, ZCO=Temuco) - SIN prefijo CL-",
+            "COD_COBERTURA": "Destino - SIN prefijo CL-",
+            "TIPO_ENTREGA": "1=Sucursal, 2=Domicilio",
+            "LAT_DIR/LON_DIR": "Solo si TIPO_ENTREGA=2 (domicilio), sino null",
+            "RUT_REMITENTE/RUT_DESTINATARIO": "Formato: 16786170 + 9 (sin guión)",
+            "NUMERO_TCC": "Número de cliente, puede ser '0' por defecto"
+          }
+        },
+        {
+          "id": "chilexpress_get_qr",
+          "name": "Get QR Code",
+          "provider": "Chilexpress",
+          "method": "GET",
+          "url": "https://devservices.wschilexpress.com/agendadigital/api/v4/prechequeo/GetCodigoQR",
+          "description": "Obtiene el código QR generado para la Orden de Transporte",
+          "consumption": {
+            "location": "src/tools/services/chilexpress.js",
+            "function": "getQRCode(numeroOT)",
+            "calledBy": ["MCP Server /get-qr-code endpoint"],
+            "triggers": ["Después de generar OT exitosamente"]
+          },
+          "request": {
+            "url_params": {
+              "numeroOT": "OT12345678"
+            },
+            "headers": {
+              "Ocp-Apim-Subscription-Key": "API_KEY from .env"
+            }
+          },
+          "response": {
+            "success_code": 200,
+            "example": {
+              "qrCode": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+              "format": "Base64 PNG image",
+              "numero_ot": "OT12345678"
+            }
+          },
+          "output": {
+            "sent_to": "Telegram or WhatsApp",
+            "format": "Image file (PNG)",
+            "presentation": "Displayed as image in chat"
+          }
+        }
+      ]
+    }
+  },
+  "internal_apis": {
+    "mcp_server": {
+      "name": "MCP Server",
+      "location": "src/tools/server.js",
+      "port": 4000,
+      "endpoints": [
+        {
+          "path": "/quote",
+          "method": "POST",
+          "description": "Obtener cotización",
+          "calls": ["chilexpress_quotation"]
+        },
+        {
+          "path": "/get-sender-by-email",
+          "method": "POST",
+          "description": "Obtener datos del remitente",
+          "calls": ["mongodb_get_user", "chilexpress_get_user", "chilexpress_get_recipients"]
+        },
+        {
+          "path": "/search-city",
+          "method": "POST",
+          "description": "Buscar ciudad",
+          "calls": ["city_search_service"]
+        },
+        {
+          "path": "/find-offices",
+          "method": "POST",
+          "description": "Buscar oficinas",
+          "calls": ["chilexpress_find_offices"]
+        },
+        {
+          "path": "/search-street",
+          "method": "POST",
+          "description": "Buscar calle",
+          "calls": ["chilexpress_search_street"]
+        },
+        {
+          "path": "/georeference",
+          "method": "POST",
+          "description": "Obtener coordenadas",
+          "calls": ["chilexpress_georeference"]
+        },
+        {
+          "path": "/validate-address",
+          "method": "POST",
+          "description": "Validar dirección",
+          "calls": ["chilexpress_validate_address"]
+        },
+        {
+          "path": "/generate-ot",
+          "method": "POST",
+          "description": "Generar Orden de Transporte",
+          "calls": ["chilexpress_generate_ot"]
+        },
+        {
+          "path": "/get-qr-code",
+          "method": "POST",
+          "description": "Obtener código QR",
+          "calls": ["chilexpress_get_qr"]
+        },
+        {
+          "path": "/webhook",
+          "method": "GET/POST",
+          "description": "Recibir webhooks de WhatsApp (WATI)",
+          "calls": ["None - internal processing"]
+        }
+      ]
+    },
+    "openai_agent": {
+      "name": "OpenAI Agent",
+      "location": "src/agent/openai.js",
+      "provider": "Azure OpenAI",
+      "model": "GPT-4o",
+      "endpoint": "AZURE_OPENAI_ENDPOINT from .env",
+      "tools": [
+        {
+          "name": "obtener_cotizacion",
+          "description": "Get quotation from Chilexpress",
+          "calls": ["chilexpress_quotation via MCP /quote"]
+        },
+        {
+          "name": "obtener_datos_remitente",
+          "description": "Get sender data from MongoDB or Chilexpress",
+          "calls": ["mongodb_get_user", "chilexpress_get_user via MCP /get-sender-by-email"]
+        },
+        {
+          "name": "buscar_direccion",
+          "description": "Search for street",
+          "calls": ["chilexpress_search_street via MCP /search-street"]
+        },
+        {
+          "name": "obtener_coordenadas_direccion",
+          "description": "Get address coordinates",
+          "calls": ["chilexpress_georeference via MCP /georeference"]
+        },
+        {
+          "name": "buscar_oficinas_chilexpress",
+          "description": "Find Chilexpress offices",
+          "calls": ["chilexpress_find_offices via MCP /find-offices"]
+        },
+        {
+          "name": "validar_direccion",
+          "description": "Validate address",
+          "calls": ["chilexpress_validate_address via MCP /validate-address"]
+        },
+        {
+          "name": "generar_orden_transporte",
+          "description": "Generate Order of Transport",
+          "calls": ["chilexpress_generate_ot, chilexpress_get_qr via MCP /generate-ot, /get-qr-code"]
+        },
+        {
+          "name": "seleccionar_destinatario_previo",
+          "description": "Internal tool - select from previous recipients list",
+          "calls": ["None - internal"]
+        }
+      ]
+    },
+    "mongodb": {
+      "name": "MongoDB",
+      "location": "src/agent/history.js",
+      "uri": "MONGO_URI from .env",
+      "collections": [
+        {
+          "name": "users",
+          "purpose": "Store sender data",
+          "fields": ["email", "GlsCorreo", "nombre", "rut", "dv", "telefono", "idCliente", "categoria"]
+        },
+        {
+          "name": "recipients",
+          "purpose": "Store previous recipients",
+          "fields": ["userEmail", "nombre", "rut", "telefono", "email", "direccion", "numero", "ciudad"]
+        },
+        {
+          "name": "conversations",
+          "purpose": "Store conversation history",
+          "fields": ["chatId", "messages", "createdAt", "updatedAt"]
+        }
+      ]
+    }
+  },
+  "external_integrations": {
+    "telegram": {
+      "name": "Telegram Bot",
+      "location": "src/bot/telegram.js",
+      "token": "TELEGRAM_TOKEN from .env",
+      "type": "Polling",
+      "features": ["Text", "Audio", "Photos", "Location", "Inline Keyboard Buttons"]
+    },
+    "whatsapp_wati": {
+      "name": "WhatsApp via WATI",
+      "location": "src/bot/whatsapp.js",
+      "type": "Webhook",
+      "webhook_url": "https://your-domain.com/webhook",
+      "token": "WATI_WEBHOOK_TOKEN from .env",
+      "api_url": "WATI_API_URL from .env",
+      "features": ["Text", "Images", "Interactive Buttons", "Location"],
+      "methods": ["sendMessage", "sendButtons", "sendImage", "handleWebhook"]
+    }
+  },
+  "data_flow_summary": {
+    "quotation_flow": "User Input → Agent → MCP /quote → Chilexpress API → Agent Response",
+    "sender_data_flow": "User Email → Agent → MCP /get-sender-by-email → (MongoDB → Chilexpress) → Agent Response + Previous Recipients",
+    "address_validation_flow": "Address Input → Agent → MCP /validate-address → Chilexpress Validate → MCP /georeference → Agent Response (coordinates stored)",
+    "ot_generation_flow": "All Data Collected → extractDataFromHistory() → prepareOTArguments() → MCP /generate-ot → Chilexpress GenerateOT → MCP /get-qr-code → Image to User",
+    "message_sending": "Agent Response → Telegram/WhatsApp Module → Detect Buttons → Format for Platform → Send via API"
+  },
+  "error_handling": {
+    "chilexpress_api_errors": {
+      "SIN_SERVICIO": "City codes incorrect or route not available - check COD_COBERTURA format",
+      "404": "User or data not found - handle gracefully with 'Not found' message",
+      "400": "Bad request - missing required fields or invalid format",
+      "TIMEOUT": "API slow - inform user and retry after 2-3 seconds"
+    },
+    "mongodb_errors": {
+      "CONNECTION_FAILED": "Cannot connect to database - use Chilexpress as fallback",
+      "QUERY_ERROR": "Database query failed - retry or fallback"
+    },
+    "agent_errors": {
+      "MISSING_TOOLS": "Tool not found - ensure tool is defined in openai.js",
+      "INVALID_RESPONSE": "Response validation failed - sanitize and resend",
+      "TOKEN_LIMIT": "Message too long - use sliding window to limit history"
+    }
+  },
+  "configuration": {
+    "env_variables": {
+      "WATI_API_URL": "Base URL for WATI API",
+      "WATI_TOKEN": "Authentication token for WATI API",
+      "WATI_PHONE_ID": "Phone ID registered in WATI",
+      "WATI_WEBHOOK_TOKEN": "Token for webhook validation",
+      "API_BASE_URL": "https://devservices.wschilexpress.com",
+      "API_KEY": "Chilexpress API subscription key",
+      "API_VERSION": "v4 (configurable)",
+      "AZURE_OPENAI_ENDPOINT": "Azure OpenAI endpoint",
+      "AZURE_OPENAI_API_KEY": "Azure OpenAI API key",
+      "MCP_PORT": "4000 (port for MCP Server)",
+      "MCP_SERVER_URL": "http://localhost:4000",
+      "MONGO_URI": "MongoDB connection string",
+      "TELEGRAM_TOKEN": "Telegram bot token"
+    }
+  },
+  "best_practices": {
+    "api_calls": [
+      "Always validate input before calling external APIs",
+      "Implement retry logic with exponential backoff",
+      "Cache frequent queries (cities, offices) to reduce API calls",
+      "Log all API calls with timestamps and parameters",
+      "Handle timeouts gracefully - inform user of delay"
+    ],
+    "data_handling": [
+      "Normalize email to lowercase for consistency",
+      "Remove 'CL-' prefix from city codes before sending to Chilexpress",
+      "Validate RUT format before sending (no special chars)",
+      "Store coordinates with precision to 5 decimal places",
+      "Always verify user owns the data before using it"
+    ],
+    "security": [
+      "Never log sensitive data (API keys, passwords)",
+      "Validate webhook tokens before processing",
+      "Use HTTPS for all external API calls",
+      "Encrypt sensitive fields in MongoDB",
+      "Rate limit webhook endpoints to prevent abuse"
+    ]
+  }
+}
