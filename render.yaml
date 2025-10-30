@@ -3,14 +3,7 @@ services:
     name: generadorOT
     env: python
     plan: free
-    buildCommand: bash build.sh
-    startCommand: gunicorn app:app
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
     envVars:
-      - key: PYTHON_VERSION
-        value: "3.13"
       - key: PYTHONUNBUFFERED
         value: "true"
-    headers:
-      - path: /api/*
-        name: Cache-Control
-        value: "no-cache, no-store, must-revalidate"
